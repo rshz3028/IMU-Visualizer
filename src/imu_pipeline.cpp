@@ -279,6 +279,8 @@ void IMUPipeline::update(const RawIMUPacket& raw)
             dt = 1.0f / 60.0f;
     }
 
+    m_deltaTime = dt;
+
     m_lastTimestamp = raw.timestamp;
     m_hasLastTimestamp = true;
 
@@ -567,6 +569,11 @@ const IMUStream& IMUPipeline::virtualIMU() const
     return m_virtualIMU;
 }
 
+const IMUStream& IMUPipeline::rigidBodyIMU() const
+{
+    return m_rigidBodyIMU;
+}
+
 const QuaternionStream& IMUPipeline::madgwick() const
 {
     return m_madgwick;
@@ -625,4 +632,12 @@ void IMUPipeline::setMount2Rotation(float x, float y, float z)
             y,
             z
         );
+}
+
+float IMUPipeline::deltaTime() const
+{
+    if (!m_hasLastTimestamp)
+        return 1.0f / 60.0f;
+
+    return m_deltaTime;
 }

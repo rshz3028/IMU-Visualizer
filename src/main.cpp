@@ -11,6 +11,7 @@
 #include "scene.h"
 #include "serial_imu.h"
 #include "imu_pipeline.h"
+#include "evaluation.h"
 
 int main()
 {
@@ -21,6 +22,7 @@ int main()
     Scene scene;
     SerialIMU imu;
     IMUPipeline pipeline;
+    EvaluationManager evaluation;
 
     if (!renderer.initialize())
     {
@@ -114,6 +116,7 @@ int main()
         if (imu.update())
         {
             pipeline.update(imu.packet());
+            evaluation.update(pipeline,pipeline.deltaTime());
             if (SceneObject* object = scene.imuObject())
             {
                 object->transform.rotation =
@@ -150,6 +153,7 @@ int main()
         renderer.endFrame();
     }
 
+    evaluation.saveAll();
     imu.close();
     basicShader.destroy();
     renderer.shutdown();

@@ -12,6 +12,7 @@
 #include "filter/mekf_filter.h"
 
 
+
 enum class StreamType
 {
     RawIMU,
@@ -79,7 +80,7 @@ public:
     void setMount2Rotation(float x, float y, float z);
 
     const Quaternion& orientation() const;
-
+    float deltaTime() const;
     //--------------------------------------------------
     // Input packet
     //--------------------------------------------------
@@ -95,6 +96,7 @@ public:
     const IMUStream& bodyIMU1() const;
     const IMUStream& bodyIMU2() const;
     const IMUStream& virtualIMU() const;
+    const IMUStream& rigidBodyIMU() const;
 
     const QuaternionStream& madgwick() const;
     const QuaternionStream& mahony() const;
@@ -157,6 +159,7 @@ private:
 
     uint32_t m_lastTimestamp = 0;
     bool m_hasLastTimestamp = false;
+    float m_deltaTime = 1.0f / 60.0f;
 
     QuaternionStream m_madgwick;
     QuaternionStream m_mahony;
