@@ -1,0 +1,12 @@
+# Build output
+build/
+*.o
+*.exe
+
+# Runtime files
+imgui.ini
+*.csv
+
+# Editor
+.vscode/
+.idea/
