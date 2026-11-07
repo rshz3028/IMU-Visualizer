@@ -25,14 +25,21 @@ src/            application code
 src/filter/     orientation filters (accel, complementary, Mahony, Madgwick, MEKF)
 include/        headers
 assets/         shaders and 3D models
-vendor/         third-party: SDL3, glad, Dear ImGui
+vendor/         third-party: SDL3 (submodule), glad, Dear ImGui
 ```
 
 ## Building (Windows)
 
-Requirements: MinGW-w64 (`g++`, `gcc`, `mingw32-make`) and an OpenGL 3.3 capable GPU. SDL3, glad and ImGui are already in `vendor/`.
+Requirements: MinGW-w64 (`g++`, `gcc`, `mingw32-make`), CMake, and an OpenGL 3.3 capable GPU. glad and ImGui are in `vendor/`. SDL3 is a git submodule.
 
 ```bash
+git clone --recursive https://github.com/rshz3028/IMU-Visualizer.git
+cd IMU-Visualizer
+
+# Build SDL3 once
+cmake -S vendor/SDL -B vendor/SDL/build -G "MinGW Makefiles"
+cmake --build vendor/SDL/build
+
 mingw32-make        # builds build/imu_visualizer.exe
 mingw32-make run    # builds and runs
 mingw32-make clean
