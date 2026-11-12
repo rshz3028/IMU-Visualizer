@@ -6,3 +6,8 @@
 *.glb binary
 *.exe binary
 *.dll binary
+
+# Keep third-party code out of GitHub's language stats
+vendor/** linguist-vendored
+include/glad/** linguist-vendored
+include/KHR/** linguist-vendored
