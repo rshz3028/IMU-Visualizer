@@ -1,0 +1,61 @@
+Dual ESKF Monte-Carlo: 10 seeds, 30 min @ 200 Hz, ARW 0.30 deg/sqrt(h)
+bias: turn-on 0.10 deg/s/axis, RW 5.0e-06 rad/s/sqrt(s), shared warm-up 0.10 deg/s/axis (tau 300 s)
+
+[rotZ180] seed 1, final body-frame biases (deg/s):
+   b1 true  -0.2183  0.0418  0.1758 | ESKF(d) -0.2186  0.0362  0.1948
+   b2 true   0.1325 -0.1278  0.0614 | ESKF(d)  0.1328 -0.1363  0.0784
+   b1-b2    -0.3508  0.1696  0.1144 | ESKF(c) -0.3515  0.1725  0.1163
+   fused    -0.0429 -0.0430  0.1186 | ESKF(d) -0.0429 -0.0501  0.1366 | ESKF(c) -0.0479 -0.0566 -0.0009
+
+=== IMU2 rotated 180 deg about Z (same Z) ===
+filter                                        RMS yaw err [deg]    |final yaw| [deg]   RMS tilt [deg]
+(a)  MEKF repo, IMU1 only                   2103.860 +- 1442.746  3553.250 +- 2710.689 178.628 +- 0.242 
+(b)  MEKF repo, 50/50 average               2454.029 +- 1526.271  4318.594 +- 2852.093 178.432 +- 0.383 
+(a*) MEKF sign-fixed, IMU1 only              607.669 +- 460.825   1056.144 +- 810.549   0.484 +- 0.052 
+(b*) MEKF sign-fixed, 50/50 average          592.270 +- 501.802   1029.427 +- 877.946   0.436 +- 0.054 
+(b*')MEKF fixed, avg + 10 s startup cal      686.499 +- 576.545   1195.424 +- 1000.906  0.447 +- 0.073 
+(c)  Dual ESKF, no ZARU                       72.485 +- 56.180     129.759 +- 104.788   0.605 +- 0.073 
+(c#) Dual ESKF, no ZARU, no decoupling       544.250 +- 345.637    946.412 +- 604.187   0.342 +- 0.056 
+(c') Dual ESKF, ZARU first 10 s only          59.206 +- 58.901     110.984 +- 110.380   0.303 +- 0.044 
+(d)  Dual ESKF, ZARU at stops                  1.536 +- 1.517        1.414 +- 1.233     0.279 +- 0.039 
+(d-) Dual ESKF, ZARU stops, no diff upd        1.536 +- 1.517        1.414 +- 1.233     0.279 +- 0.039 
+(d#) Dual ESKF, ZARU stops, no decoupl.        1.581 +- 1.432        1.168 +- 1.174     0.279 +- 0.039 
+(d1) ESKF single-input IMU1, ZARU stops        1.715 +- 1.710        1.841 +- 1.661     0.300 +- 0.046 
+(e)  Dual ESKF, ZARU stops + mag yaw           0.810 +- 0.325        1.015 +- 0.803     0.279 +- 0.039 
+
+end-of-run |bias error| z-axis, deg/s (mean +- std over seeds):
+   fused bias, ESKF (d)      0.00819 +- 0.00646
+   b1,         ESKF (d)      0.00826 +- 0.00662
+   b2,         ESKF (d)      0.00823 +- 0.00624
+   fused bias, ESKF (c)      0.07716 +- 0.06568
+   b1-b2,      ESKF (c)      0.00112 +- 0.00094
+
+[rotX180] seed 1, final body-frame biases (deg/s):
+   b1 true  -0.2183  0.0418  0.1758 | ESKF(d) -0.2203  0.0362  0.1769
+   b2 true  -0.1325 -0.1278 -0.0614 | ESKF(d) -0.1350 -0.1362 -0.0607
+   b1-b2    -0.0858  0.1696  0.2373 | ESKF(c) -0.0852  0.1725  0.2376
+   fused    -0.1754 -0.0430  0.0572 | ESKF(d) -0.1776 -0.0500  0.0581 | ESKF(c) -0.1853 -0.0500  0.0006
+
+=== IMU2 rotated 180 deg about X (opposed Z) ===
+filter                                        RMS yaw err [deg]    |final yaw| [deg]   RMS tilt [deg]
+(a)  MEKF repo, IMU1 only                   2103.860 +- 1442.746  3553.250 +- 2710.689 178.628 +- 0.242 
+(b)  MEKF repo, 50/50 average               2096.242 +- 1443.246  3406.262 +- 2780.652 178.547 +- 0.251 
+(a*) MEKF sign-fixed, IMU1 only              607.669 +- 460.825   1056.144 +- 810.549   0.484 +- 0.052 
+(b*) MEKF sign-fixed, 50/50 average          614.330 +- 484.290   1068.418 +- 851.661   0.470 +- 0.044 
+(b*')MEKF fixed, avg + 10 s startup cal      656.738 +- 588.086   1138.327 +- 1027.390  0.478 +- 0.063 
+(c)  Dual ESKF, no ZARU                       67.018 +- 33.942     114.233 +- 59.326    0.602 +- 0.072 
+(c#) Dual ESKF, no ZARU, no decoupling       508.120 +- 254.835    884.673 +- 432.791   0.346 +- 0.052 
+(c') Dual ESKF, ZARU first 10 s only           2.339 +- 1.399        4.844 +- 3.675     0.311 +- 0.049 
+(d)  Dual ESKF, ZARU at stops                  0.523 +- 0.265        0.863 +- 0.535     0.286 +- 0.042 
+(d-) Dual ESKF, ZARU stops, no diff upd        0.523 +- 0.265        0.863 +- 0.535     0.286 +- 0.042 
+(d#) Dual ESKF, ZARU stops, no decoupl.        0.766 +- 0.347        1.262 +- 0.847     0.286 +- 0.042 
+(d1) ESKF single-input IMU1, ZARU stops        1.715 +- 1.710        1.841 +- 1.661     0.300 +- 0.046 
+(e)  Dual ESKF, ZARU stops + mag yaw           0.802 +- 0.303        0.957 +- 0.811     0.286 +- 0.042 
+
+end-of-run |bias error| z-axis, deg/s (mean +- std over seeds):
+   fused bias, ESKF (d)      0.00175 +- 0.00092
+   b1,         ESKF (d)      0.00173 +- 0.00116
+   b2,         ESKF (d)      0.00250 +- 0.00190
+   fused bias, ESKF (c)      0.06026 +- 0.03057
+   b1-b2,      ESKF (c)      0.00225 +- 0.00279
+

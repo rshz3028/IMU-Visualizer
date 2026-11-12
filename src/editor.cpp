@@ -1,6 +1,7 @@
 #include "editor.h"
 
 #include <imgui.h>
+#include <implot.h>
 
 #include <backends/imgui_impl_sdl3.h>
 #include <backends/imgui_impl_opengl3.h>
@@ -15,6 +16,7 @@ bool Editor::initialize(
     IMGUI_CHECKVERSION();
 
     ImGui::CreateContext();
+    ImPlot::CreateContext();
 
     ImGui::StyleColorsDark();
 
@@ -39,7 +41,12 @@ void Editor::beginFrame()
     ImGui::NewFrame();
 }
 
-void Editor::draw(Scene& scene)
+void Editor::draw(
+    Scene& scene,
+    EvaluationManager& evaluation,
+    SerialIMU& serial,
+    const char* rawLogPath
+)
 {
     ImGui::Begin("IMU_Test_Visualizer");
 
@@ -103,6 +110,40 @@ void Editor::draw(Scene& scene)
         orientationFilters,
         IM_ARRAYSIZE(orientationFilters)
     );
+
+    ImGui::Separator();
+    //--------------------------------
+    // Serial link
+    //--------------------------------
+
+    ImGui::Text("Serial Link");
+
+    const SerialIMUStats& stats = serial.stats();
+
+    ImGui::Text("Binary packets : %llu", (unsigned long long)stats.binaryPackets);
+    ImGui::Text("ASCII packets  : %llu", (unsigned long long)stats.asciiPackets);
+
+    if (serial.isReplay())
+        ImGui::Text("Replay packets : %llu", (unsigned long long)stats.replayPackets);
+    ImGui::Text("Link drops (seq gap) : %llu", (unsigned long long)stats.droppedSamples);
+    ImGui::Text("FW skipped slots     : %llu", (unsigned long long)stats.skippedSlots);
+    ImGui::Text("CRC errors     : %llu", (unsigned long long)stats.crcErrors);
+    ImGui::Text("Parse errors   : %llu", (unsigned long long)stats.parseErrors);
+
+    if (ImGui::Button("Reset Counters"))
+    {
+        serial.resetStats();
+    }
+
+    bool rawLogging = serial.isRawLogging();
+
+    if (ImGui::Checkbox("Log raw packets (raw_log.csv)", &rawLogging))
+    {
+        if (rawLogging)
+            serial.startRawLog(rawLogPath);
+        else
+            serial.stopRawLog();
+    }
 
     ImGui::Separator();
     //--------------------------------
@@ -213,7 +254,103 @@ void Editor::draw(Scene& scene)
         );
     }
 
-    ImGui::End();
+    ImGui::Begin("Evaluation Graph");
+
+    const EvaluationRecorder* recorder = nullptr;
+
+    switch (orientationSource())
+    {
+    case OrientationSource::IMU1:
+        recorder = &evaluation.imu1();
+        break;
+
+    case OrientationSource::IMU2:
+        recorder = &evaluation.imu2();
+        break;
+
+    case OrientationSource::VirtualIMU:
+        recorder = &evaluation.average();
+        break;
+
+    case OrientationSource::RigidBodyVIMU:
+        recorder = &evaluation.rigidBody();
+        break;
+
+    default:
+        break;
+    }
+
+    if (recorder)
+    {
+        const auto& frames = recorder->frames();
+
+        ImGui::Text("Frames: %d", (int)frames.size());
+        ImGui::Text("Source: %d", (int)orientationSource());
+        ImGui::Text("Filter: %d", (int)orientationFilter());
+
+        std::vector<double> time;
+        std::vector<double> roll;
+        std::vector<double> pitch;
+        std::vector<double> yaw;
+
+        time.reserve(frames.size());
+        roll.reserve(frames.size());
+        pitch.reserve(frames.size());
+        yaw.reserve(frames.size());
+
+        for (const auto& frame : frames)
+        {
+            EulerStatistics selected =
+    frame.euler(
+        orientationFilter()
+    );
+
+EulerStatistics reference =
+    frame.euler(
+        OrientationFilter::Accelerometer
+    );
+
+            time.push_back(frame.time);
+            roll.push_back(selected.roll);
+            pitch.push_back(selected.pitch);
+            yaw.push_back(selected.yaw);
+        }
+        if (frames.empty())
+        {
+            ImGui::Text("No recorded data.");
+        }
+        else
+        {
+            if (ImPlot::BeginPlot("Orientation"))
+            {
+                ImPlot::PlotLine(
+                    "Roll",
+                    time.data(),
+                    roll.data(),
+                    (int)time.size()
+                );
+
+                ImPlot::PlotLine(
+                    "Pitch",
+                    time.data(),
+                    pitch.data(),
+                    (int)time.size()
+                );
+
+                ImPlot::PlotLine(
+                    "Yaw",
+                    time.data(),
+                    yaw.data(),
+                    (int)time.size()
+                );
+
+                ImPlot::EndPlot();
+            }
+        }
+    }
+
+    ImGui::End(); // Evaluation Graph
+    ImGui::End(); // IMU_Test_Visualizer
 }
 
 bool Editor::consumeSpawnRequest(
@@ -244,6 +381,20 @@ OrientationFilter Editor::orientationFilter() const
     );
 }
 
+OrientationSource Editor::compareSource() const
+{
+    return static_cast<OrientationSource>(
+        m_compareSource
+    );
+}
+
+OrientationFilter Editor::compareFilter() const
+{
+    return static_cast<OrientationFilter>(
+        m_compareFilter
+    );
+}
+
 const float* Editor::imu1Rotation() const
 {
     return m_imu1Rotation;
@@ -268,6 +419,6 @@ void Editor::shutdown()
     ImGui_ImplOpenGL3_Shutdown();
 
     ImGui_ImplSDL3_Shutdown();
-
+    ImPlot::DestroyContext();
     ImGui::DestroyContext();
 }

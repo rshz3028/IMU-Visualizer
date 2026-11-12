@@ -29,6 +29,10 @@ IMGUI_SRC := \
 	$(IMGUI_DIR)/backends/imgui_impl_sdl3.cpp \
 	$(IMGUI_DIR)/backends/imgui_impl_opengl3.cpp
 
+IMPLOT_SRC := \
+    vendor/implot/implot.cpp \
+    vendor/implot/implot_items.cpp
+
 # C sources
 C_SRC := $(GLAD_DIR)/src/gl.c
 
@@ -45,6 +49,10 @@ IMGUI_OBJ := \
 	$(OBJ_DIR)/imgui_impl_sdl3.o \
 	$(OBJ_DIR)/imgui_impl_opengl3.o
 
+IMPLOT_OBJ := \
+    $(OBJ_DIR)/implot.o \
+    $(OBJ_DIR)/implot_items.o
+
 C_OBJ := $(OBJ_DIR)/gl.o
 
 # Includes
@@ -54,7 +62,8 @@ INCLUDES = \
 	-I$(SDL_DIR)/include \
 	-I$(GLAD_DIR)/include \
 	-I$(IMGUI_DIR) \
-	-I$(IMGUI_DIR)/backends
+	-I$(IMGUI_DIR)/backends \
+	-Ivendor/implot
 
 # Libraries
 LIBS = \
@@ -77,7 +86,7 @@ $(OBJ_DIR):
 $(OBJ_DIR)/filter:
 	if not exist build\obj\filter mkdir build\obj\filter
 
-$(TARGET): $(CPP_OBJ) $(IMGUI_OBJ) $(C_OBJ)
+$(TARGET): $(CPP_OBJ) $(IMGUI_OBJ) $(IMPLOT_OBJ) $(C_OBJ)
 	$(CXX) $^ -o $@ $(LIBS)
 	xcopy assets build\assets /E /I /Y
 	copy /Y vendor\SDL\build\SDL3.dll build\
@@ -111,6 +120,12 @@ $(OBJ_DIR)/imgui_impl_sdl3.o:
 
 $(OBJ_DIR)/imgui_impl_opengl3.o:
 	$(CXX) $(CXXFLAGS) -c $(IMGUI_DIR)/backends/imgui_impl_opengl3.cpp -o $@
+
+$(OBJ_DIR)/implot.o: vendor/implot/implot.cpp
+	$(CXX) $(CXXFLAGS) $(INCLUDES) -c $< -o $@
+
+$(OBJ_DIR)/implot_items.o: vendor/implot/implot_items.cpp
+	$(CXX) $(CXXFLAGS) $(INCLUDES) -c $< -o $@
 
 run: $(TARGET)
 	$(TARGET)

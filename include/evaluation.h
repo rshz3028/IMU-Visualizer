@@ -9,8 +9,16 @@
 #include "filter/madgwick_filter.h"
 #include "filter/mekf_filter.h"
 
+#include "imu_pipeline.h"
 
 class IMUPipeline;
+
+struct EulerStatistics
+{
+    float roll = 0.0f;
+    float pitch = 0.0f;
+    float yaw = 0.0f;
+};
 
 struct EvaluationFrame
 {
@@ -35,6 +43,11 @@ struct EvaluationFrame
     float mekfRoll;
     float mekfPitch;
     float mekfYaw;
+
+    EulerStatistics euler(
+        OrientationFilter filter
+    ) const;
+
 };
 
 class EvaluationRecorder
@@ -46,6 +59,11 @@ public:
     void push(const EvaluationFrame& frame);
 
     bool saveCSV(const std::string& filename);
+    const std::vector<EvaluationFrame>& frames() const
+    {
+        return m_frames;
+    }
+
 
 private:
 
@@ -55,6 +73,11 @@ private:
 class EvaluationManager
 {
 public:
+
+    const EvaluationRecorder& imu1() const;
+    const EvaluationRecorder& imu2() const;
+    const EvaluationRecorder& average() const;
+    const EvaluationRecorder& rigidBody() const;
 
     void update(
         const IMUPipeline& pipeline,

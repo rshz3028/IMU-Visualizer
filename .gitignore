@@ -1,0 +1,18 @@
+# Build output
+build/
+*.o
+*.exe
+
+# Runtime files
+imgui.ini
+*.csv
+
+# Analysis / simulation output (synthetic logs are hundreds of MB)
+tools/out/
+*.bin
+__pycache__/
+*.pyc
+
+# Editor
+.vscode/
+.idea/

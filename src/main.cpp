@@ -13,8 +13,34 @@
 #include "imu_pipeline.h"
 #include "evaluation.h"
 
-int main()
+//--------------------------------------------------
+// Serial configuration
+//--------------------------------------------------
+
+static const char* IMU_SERIAL_PORT = "COM12";
+static const int   IMU_BAUD_RATE   = 921600;
+
+// Log every raw packet to raw_log.csv from startup
+// (can also be toggled in the editor).
+static const bool  RAW_LOG_ENABLED = true;
+static const char* RAW_LOG_PATH    = "raw_log.csv";
+
+int main(int argc, char** argv)
 {
+    // Optional: --replay <raw_log.csv> [--speed <x>]
+    std::string replayPath;
+    float replaySpeed = 1.0f;
+
+    for (int i = 1; i < argc; ++i)
+    {
+        std::string arg = argv[i];
+
+        if (arg == "--replay" && i + 1 < argc)
+            replayPath = argv[++i];
+        else if (arg == "--speed" && i + 1 < argc)
+            replaySpeed = std::strtof(argv[++i], nullptr);
+    }
+
     Renderer renderer;
     Input input;
     Camera camera;
@@ -39,9 +65,20 @@ int main()
         renderer.getContext()
     );
 
-    if (!imu.open("COM12", 115200))
+    if (!replayPath.empty())
+    {
+        if (!imu.openReplay(replayPath, replaySpeed))
+            std::cerr << "Failed to open replay file: " << replayPath << "\n";
+    }
+    else if (!imu.open(IMU_SERIAL_PORT, IMU_BAUD_RATE))
     {
         std::cerr << "Failed to open IMU serial port.\n";
+    }
+
+    // Don't re-log a recording that's being replayed.
+    if (RAW_LOG_ENABLED && replayPath.empty())
+    {
+        imu.startRawLog(RAW_LOG_PATH);
     }
 
     Shader basicShader;
@@ -113,18 +150,28 @@ int main()
         pipeline.setMount1Rotation(imu1[0],imu1[1],imu1[2]);
         pipeline.setMount2Rotation(imu2[0],imu2[1],imu2[2]);
 
-        if (imu.update())
+        // Read all pending bytes, then process every queued
+        // packet (not just the newest one) this frame.
+        imu.update();
+
+        RawIMUPacket packet;
+        bool receivedPacket = false;
+
+        while (imu.nextPacket(packet))
         {
-            pipeline.update(imu.packet());
+            pipeline.update(packet);
             evaluation.update(pipeline,pipeline.deltaTime());
+            receivedPacket = true;
+        }
+
+        if (receivedPacket)
+        {
             if (SceneObject* object = scene.imuObject())
             {
                 object->transform.rotation =
                     pipeline.orientation();
             }
-            const RawIMUPacket& packet =
-                pipeline.rawPacket();   
-        }        
+        }
 
         renderer.beginFrame();
 
@@ -140,7 +187,12 @@ int main()
         }
 
         editor.beginFrame();
-        editor.draw(scene);
+        editor.draw(
+            scene,
+            evaluation,
+            imu,
+            RAW_LOG_PATH
+        );
 
         PrimitiveType type;
         if (editor.consumeSpawnRequest(type))

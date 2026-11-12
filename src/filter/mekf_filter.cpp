@@ -128,7 +128,52 @@ void MEKFFilter::reset()
 
     m_initialized = false;
 
+    m_magRefX = 1.0f;
+    m_magRefY = 0.0f;
+    m_magRefNorm = 0.0f;
+    m_hasMagRef = false;
+
     resetCovariance();
+}
+
+bool MEKFFilter::captureMagReference(
+    float mx,
+    float my,
+    float mz
+)
+{
+    float norm =
+        std::sqrt(mx*mx + my*my + mz*mz);
+
+    if (norm <= 1.0e-6f)
+        return false;
+
+    // Rotate the measurement into world with the current
+    // attitude and keep only its horizontal direction.
+    float wx, wy, wz;
+
+    rotateBodyToWorld(
+        m_orientation,
+        mx,
+        my,
+        mz,
+        wx,
+        wy,
+        wz
+    );
+
+    float horizontal =
+        std::sqrt(wx*wx + wy*wy);
+
+    if (horizontal <= 1.0e-6f * norm)
+        return false;
+
+    m_magRefX = wx / horizontal;
+    m_magRefY = wy / horizontal;
+    m_magRefNorm = norm;
+    m_hasMagRef = true;
+
+    return true;
 }
 
 void MEKFFilter::resetCovariance()
@@ -371,8 +416,9 @@ void MEKFFilter::updateDirection(
     y[2] = zz - hz;
 
     // Measurement Jacobian for small attitude error.
-    // h ≈ h - skew(h) * delta_theta
-    // H = [ -skew(h), 0 ]
+    // q_true = q * dq, so h_true = (I - skew(dtheta)) R^T r
+    // h ≈ h + skew(h) * delta_theta
+    // H = [ skew(h), 0 ]
     float S[3][3];
     makeSkew(hx, hy, hz, S);
 
@@ -382,7 +428,7 @@ void MEKFFilter::updateDirection(
     {
         for (int c = 0; c < 3; ++c)
         {
-            H[r][c] = -S[r][c];
+            H[r][c] = S[r][c];
         }
     }
 
@@ -576,6 +622,14 @@ void MEKFFilter::update(
             return;
 
         initializeFromAccel(ax, ay, az);
+
+        // Anchor yaw: fixed world mag reference from initial attitude.
+        captureMagReference(
+            sample.mx,
+            sample.my,
+            sample.mz
+        );
+
         return;
     }
 
@@ -607,26 +661,67 @@ void MEKFFilter::update(
     float my = sample.my;
     float mz = sample.mz;
 
-    if (validVector(mx, my, mz))
+    if (!m_hasMagRef && validVector(mx, my, mz))
     {
-        normalizeVector(mx, my, mz);
+        // First valid mag sample after init (no update this step).
+        captureMagReference(mx, my, mz);
+    }
+    else if (m_hasMagRef && validVector(mx, my, mz))
+    {
+        float norm =
+            std::sqrt(mx*mx + my*my + mz*mz);
 
-        // Soft yaw reference:
-        // Use measured horizontal magnetic direction. This avoids needing local declination.
-        float horizontal =
-            std::sqrt(mx*mx + my*my);
+        // Magnetic disturbance gate: skip if |m| is off by > tolerance.
+        bool normOk =
+            std::fabs(norm - m_magRefNorm)
+            <= m_magNormTolerance * m_magRefNorm;
 
-        if (horizontal > 1.0e-6f)
+        if (normOk)
         {
-            updateDirection(
+            // Yaw-only measurement:
+            // project body mag to world, drop vertical component,
+            // rotate back to body. Compared against the fixed
+            // horizontal world reference captured at init, so
+            // inclination does not pull roll/pitch.
+            float wx, wy, wz;
+
+            rotateBodyToWorld(
+                m_orientation,
                 mx,
                 my,
                 mz,
-                mx / horizontal,
-                my / horizontal,
-                0.0f,
-                m_magNoise
+                wx,
+                wy,
+                wz
             );
+
+            float horizontal =
+                std::sqrt(wx*wx + wy*wy);
+
+            if (horizontal > 1.0e-6f * norm)
+            {
+                float bx, by, bz;
+
+                rotateWorldToBody(
+                    m_orientation,
+                    wx / horizontal,
+                    wy / horizontal,
+                    0.0f,
+                    bx,
+                    by,
+                    bz
+                );
+
+                updateDirection(
+                    bx,
+                    by,
+                    bz,
+                    m_magRefX,
+                    m_magRefY,
+                    0.0f,
+                    m_magNoise
+                );
+            }
         }
     }
 

@@ -77,7 +77,8 @@ static IMUSample applyMount(
     const IMUMount& mount
 )
 {
-    IMUSample out;
+    // Copy keeps temperature fields.
+    IMUSample out = raw;
 
     Vec3 accel =
         rotateVector(
@@ -117,15 +118,10 @@ static Vec3 accelVector(const IMUSample& s)
     return Vec3(s.ax, s.ay, s.az);
 }
 
-static Vec3 gyroVectorRad(const IMUSample& s)
+// Gyro is already rad/s (Adafruit ISM330DHCX driver output).
+static Vec3 gyroVector(const IMUSample& s)
 {
-    const float degToRad = 3.14159265f / 180.0f;
-
-    return Vec3(
-        s.gx * degToRad,
-        s.gy * degToRad,
-        s.gz * degToRad
-    );
+    return Vec3(s.gx, s.gy, s.gz);
 }
 
 static Vec3 magVector(const IMUSample& s)
@@ -139,15 +135,14 @@ static void writeSample(
     const Vec3& gyroRad,
     const Vec3& mag)
 {
-    const float radToDeg = 180.0f / 3.14159265f;
-
     out.ax = accel.x;
     out.ay = accel.y;
     out.az = accel.z;
 
-    out.gx = gyroRad.x * radToDeg;
-    out.gy = gyroRad.y * radToDeg;
-    out.gz = gyroRad.z * radToDeg;
+    // Filters expect rad/s, keep units unchanged.
+    out.gx = gyroRad.x;
+    out.gy = gyroRad.y;
+    out.gz = gyroRad.z;
 
     out.mx = mag.x;
     out.my = mag.y;
@@ -266,17 +261,21 @@ void IMUPipeline::update(const RawIMUPacket& raw)
     // Delta Time
     //--------------------------------------------------
 
-    float dt = 1.0f / 60.0f;
+    // Timestamp is ESP32 micros(). Unsigned subtraction is
+    // wrap-safe across the 32-bit overflow (~71.6 min).
+    // Fallback: keep the last valid dt.
+    float dt = m_deltaTime;
 
     if (m_hasLastTimestamp)
     {
         uint32_t delta =
             raw.timestamp - m_lastTimestamp;
 
-        dt = static_cast<float>(delta) / 1000.0f;
+        float measured =
+            static_cast<float>(delta) * 1.0e-6f;
 
-        if (dt <= 0.0f || dt > 1.0f)
-            dt = 1.0f / 60.0f;
+        if (measured > 0.0f && measured <= 0.5f)
+            dt = measured;
     }
 
     m_deltaTime = dt;
@@ -332,6 +331,12 @@ void IMUPipeline::update(const RawIMUPacket& raw)
     m_virtualIMU.sample.mz =
         0.5f * (m_bodyIMU1.sample.mz + m_bodyIMU2.sample.mz);
 
+    m_virtualIMU.sample.hasTemp =
+        m_bodyIMU1.sample.hasTemp && m_bodyIMU2.sample.hasTemp;
+
+    m_virtualIMU.sample.temp =
+        0.5f * (m_bodyIMU1.sample.temp + m_bodyIMU2.sample.temp);
+
     //--------------------------------
     // Rigid-Body VIMU
     //--------------------------------
@@ -384,8 +389,8 @@ void IMUPipeline::update(const RawIMUPacket& raw)
     Vec3 a1 = accelVector(rigidBody1);
     Vec3 a2 = accelVector(rigidBody2);
 
-    Vec3 w1 = gyroVectorRad(rigidBody1);
-    Vec3 w2 = gyroVectorRad(rigidBody2);
+    Vec3 w1 = gyroVector(rigidBody1);
+    Vec3 w2 = gyroVector(rigidBody2);
 
     Vec3 m1 = magVector(rigidBody1);
     Vec3 m2 = magVector(rigidBody2);
@@ -447,6 +452,9 @@ void IMUPipeline::update(const RawIMUPacket& raw)
         omega,
         mag
     );
+
+    m_rigidBodyIMU.sample.hasTemp = m_virtualIMU.sample.hasTemp;
+    m_rigidBodyIMU.sample.temp    = m_virtualIMU.sample.temp;
 
     //--------------------------------
     // Selected IMU Source

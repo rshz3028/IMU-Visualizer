@@ -41,7 +41,24 @@ private:
 
     bool m_initialized = false;
 
+    // Fixed horizontal magnetic reference in world frame,
+    // captured at initialization (unit, z = 0).
+    float m_magRefX = 1.0f;
+    float m_magRefY = 0.0f;
+    float m_magRefNorm = 0.0f;
+    bool  m_hasMagRef = false;
+
+    // Reject mag updates when |m| deviates more than this
+    // fraction from the reference norm (disturbance gate).
+    float m_magNormTolerance = 0.2f;
+
 private:
+    bool captureMagReference(
+        float mx,
+        float my,
+        float mz
+    );
+
     void resetCovariance();
 
     void initializeFromAccel(

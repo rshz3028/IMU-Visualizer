@@ -88,9 +88,10 @@ void ComplementaryFilter::update(
         return;
     }
 
-    float gx = sample.gx * 3.14159265f / 180.0f;
-    float gy = sample.gy * 3.14159265f / 180.0f;
-    float gz = sample.gz * 3.14159265f / 180.0f;
+    // Pipeline already provides gyro in rad/s.
+    float gx = sample.gx;
+    float gy = sample.gy;
+    float gz = sample.gz;
 
     Quaternion omega;
     omega.w = 0.0f;

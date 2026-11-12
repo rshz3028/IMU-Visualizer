@@ -1,0 +1,8 @@
+# Store text with LF in the repo; check out with the platform default.
+* text=auto
+
+*.png binary
+*.gif binary
+*.glb binary
+*.exe binary
+*.dll binary

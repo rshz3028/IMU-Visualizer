@@ -86,35 +86,51 @@ std::vector<Vertex> ToolsGeometry::createCube(float size)
 
     float h = size * 0.5f;
 
+    // Each face is tinted by its axis (X red, Y green,
+    // Z blue; negative faces darker) so the orientation
+    // can be read at a glance.
+    float cr = 0.8f, cg = 0.8f, cb = 0.8f;
+
+    auto face = [&](float r, float g, float b)
+    {
+        cr = r; cg = g; cb = b;
+    };
+
     auto add = [&](float x, float y, float z)
     {
         vertices.push_back({
             x, y, z,
-            0.8f, 0.8f, 0.8f
+            cr, cg, cb
         });
     };
 
     // Front
+    face(0.35f, 0.55f, 0.95f);
     add(-h,-h, h); add( h,-h, h); add( h, h, h);
     add(-h,-h, h); add( h, h, h); add(-h, h, h);
 
     // Back
+    face(0.18f, 0.28f, 0.50f);
     add( h,-h,-h); add(-h,-h,-h); add(-h, h,-h);
     add( h,-h,-h); add(-h, h,-h); add( h, h,-h);
 
     // Left
+    face(0.50f, 0.20f, 0.18f);
     add(-h,-h,-h); add(-h,-h, h); add(-h, h, h);
     add(-h,-h,-h); add(-h, h, h); add(-h, h,-h);
 
     // Right
+    face(0.92f, 0.38f, 0.32f);
     add( h,-h, h); add( h,-h,-h); add( h, h,-h);
     add( h,-h, h); add( h, h,-h); add( h, h, h);
 
     // Top
+    face(0.40f, 0.85f, 0.45f);
     add(-h, h, h); add( h, h, h); add( h, h,-h);
     add(-h, h, h); add( h, h,-h); add(-h, h,-h);
 
     // Bottom
+    face(0.20f, 0.42f, 0.22f);
     add(-h,-h,-h); add( h,-h,-h); add( h,-h, h);
     add(-h,-h,-h); add( h,-h, h); add(-h,-h, h);
 

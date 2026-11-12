@@ -1,0 +1,130 @@
+#include <Wire.h>
+#include <Adafruit_ISM330DHCX.h>
+#include <Adafruit_LIS3MDL.h>
+
+Adafruit_ISM330DHCX imu1;
+Adafruit_LIS3MDL mag1;
+
+Adafruit_ISM330DHCX imu2;
+Adafruit_LIS3MDL mag2;
+
+const uint32_t SAMPLE_RATE_HZ = 100;
+const uint32_t SAMPLE_PERIOD_US = 1000000UL / SAMPLE_RATE_HZ;
+
+uint32_t nextSample = 0;
+
+void setup()
+{
+    Serial.begin(115200);
+
+    Wire.begin(21, 22);
+
+    if (!imu1.begin_I2C(0x6B))
+    {
+        Serial.println("IMU1 ERROR");
+        while (true);
+    }
+
+    if (!mag1.begin_I2C(0x1E))
+    {
+        Serial.println("MAG1 ERROR");
+        while (true);
+    }
+
+    if (!imu2.begin_I2C(0x6A))
+    {
+        Serial.println("IMU2 ERROR");
+        while (true);
+    }
+
+    if (!mag2.begin_I2C(0x1C))
+    {
+        Serial.println("MAG2 ERROR");
+        while (true);
+    }
+
+    nextSample = micros();
+}
+
+void loop()
+{
+    uint32_t now = micros();
+
+    if ((int32_t)(now - nextSample) < 0)
+        return;
+
+    nextSample += SAMPLE_PERIOD_US;
+
+    sensors_event_t a1;
+    sensors_event_t g1;
+    sensors_event_t t1;
+
+    sensors_event_t a2;
+    sensors_event_t g2;
+    sensors_event_t t2;
+
+    sensors_event_t m1;
+    sensors_event_t m2;
+
+    imu1.getEvent(&a1, &g1, &t1);
+    imu2.getEvent(&a2, &g2, &t2);
+
+    mag1.getEvent(&m1);
+    mag2.getEvent(&m2);
+
+    uint32_t timestamp = micros();
+
+    Serial.print("R,");
+
+    Serial.print(timestamp);
+
+    // ---------- IMU 1 ----------
+
+    Serial.print(',');
+
+    Serial.print(a1.acceleration.x, 6);
+    Serial.print(',');
+    Serial.print(a1.acceleration.y, 6);
+    Serial.print(',');
+    Serial.print(a1.acceleration.z, 6);
+
+    Serial.print(',');
+    Serial.print(g1.gyro.x, 6);
+    Serial.print(',');
+    Serial.print(g1.gyro.y, 6);
+    Serial.print(',');
+    Serial.print(g1.gyro.z, 6);
+
+    Serial.print(',');
+    Serial.print(m1.magnetic.x, 6);
+    Serial.print(',');
+    Serial.print(m1.magnetic.y, 6);
+    Serial.print(',');
+    Serial.print(m1.magnetic.z, 6);
+
+    // ---------- IMU 2 ----------
+
+    Serial.print(',');
+
+    Serial.print(a2.acceleration.x, 6);
+    Serial.print(',');
+    Serial.print(a2.acceleration.y, 6);
+    Serial.print(',');
+    Serial.print(a2.acceleration.z, 6);
+
+    Serial.print(',');
+    Serial.print(g2.gyro.x, 6);
+    Serial.print(',');
+    Serial.print(g2.gyro.y, 6);
+    Serial.print(',');
+    Serial.print(g2.gyro.z, 6);
+
+    Serial.print(',');
+    Serial.print(m2.magnetic.x, 6);
+    Serial.print(',');
+    Serial.print(m2.magnetic.y, 6);
+    Serial.print(',');
+    Serial.print(m2.magnetic.z, 6);
+
+    Serial.println();
+}

@@ -108,6 +108,31 @@ static void QuaternionToEuler(
     yaw *= RAD2DEG;
 }
 
+EulerStatistics EvaluationFrame::euler(
+    OrientationFilter filter
+) const
+{
+    switch (filter)
+    {
+    case OrientationFilter::Accelerometer:
+        return { accelRoll, accelPitch, accelYaw };
+
+    case OrientationFilter::Complementary:
+        return { compRoll, compPitch, compYaw };
+
+    case OrientationFilter::Madgwick:
+        return { madgwickRoll, madgwickPitch, madgwickYaw };
+
+    case OrientationFilter::Mahony:
+        return { mahonyRoll, mahonyPitch, mahonyYaw };
+
+    case OrientationFilter::MEKF:
+        return { mekfRoll, mekfPitch, mekfYaw };
+    }
+
+    return {};
+}
+
 void EvaluationManager::quaternionToEuler(
     const Quaternion& q,
     float& roll,
@@ -264,4 +289,28 @@ void EvaluationManager::saveAll()
     m_rigid.saveCSV(
         "RigidBodyVIMU.csv"
     );
+}
+
+const EvaluationRecorder&
+EvaluationManager::imu1() const
+{
+    return m_imu1;
+}
+
+const EvaluationRecorder&
+EvaluationManager::imu2() const
+{
+    return m_imu2;
+}
+
+const EvaluationRecorder&
+EvaluationManager::average() const
+{
+    return m_average;
+}
+
+const EvaluationRecorder&
+EvaluationManager::rigidBody() const
+{
+    return m_rigid;
 }
